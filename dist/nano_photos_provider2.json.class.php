@@ -58,7 +58,7 @@ class galleryJSON
     protected $ctn_w    = array();
     protected $ctn_h    = array();
     protected $currentItem;
-            
+
     const CONFIG_FILE    = './nano_photos_provider2.cfg';
 
     public function __construct()
@@ -97,12 +97,24 @@ class galleryJSON
       
       $dh = opendir($this->data->fullDir);
 
+      $min_count = 0;
+      // This logic is not yet correct, but will make sure all images are loaded when the parameter is not set
+      if (!isset($_GET['perPage'])) {
+          $max_count = INF;
+      } else {
+          $max_count = $_GET['perPage'];
+      }
+
+      $img_count = 0;
+
       // loop the folder to retrieve images and albums
       if ($dh != false) {
-        while (false !== ($filename = readdir($dh))) {
+          while (false !== ($filename = readdir($dh))) {
           if (is_file($this->data->fullDir . $filename) ) {
             // it's a file
-            if ($filename != '.' &&
+            // $img_count++;
+            if ($img_count >= $min_count && $img_count < $max_count && 
+                    $filename != '.' &&
                     $filename != '..' &&
                     $filename != '_thumbnails' &&
                     preg_match("/\.(" . $this->config['fileExtensions'] . ")*$/i", $filename) &&
@@ -119,7 +131,7 @@ class galleryJSON
                     $filename != '..' &&
                     $filename != '_thumbnails' &&
                     strpos($filename, $this->config['ignoreDetector']) == false && 
-                    !empty($files) )
+                    true ) //!empty($files) )
             {
               $lstAlbums[] = $this->PrepareData($filename, 'ALBUM');
             }
@@ -129,8 +141,8 @@ class galleryJSON
       }
 
       // sort data
-      usort($lstAlbums, array('galleryJSON','Compare'));
-      usort($lstImages, array('galleryJSON','Compare'));
+      // usort($lstAlbums, array('galleryJSON','Compare'));
+      // usort($lstImages, array('galleryJSON','Compare'));
 
       $response = array('nano_status' => 'ok', 'nano_message' => '', 'album_content' => array_merge($lstAlbums, $lstImages));
 
@@ -306,6 +318,21 @@ class galleryJSON
       }
       closedir($dh);
 
+      if ($image == '') {
+        $dh       = opendir($folder );
+        while (false !== ($filename = readdir($dh))) {
+          if ($filename != '.' && $filename != '..' && !is_file($folder . '/' . $filename)) {
+            $image = $this->GetFirstImageFolder($folder . '/' . $filename);
+            if ($image != '') {
+              $image = $filename . '/' . $image;  
+              break;
+            }
+          }
+        }
+        closedir($dh);
+      }
+
+
       return $image;
     }
 
@@ -339,28 +366,27 @@ class galleryJSON
       return ($b) ? +1 : -1;
     }
 
-    function image_fix_orientation(&$image, &$size, $filename) {
-        $exif = exif_read_data($filename);
-
-        if (!empty($exif['Orientation'])) {
-            switch ($exif['Orientation']) {
-                case 3:
-                    $image = imagerotate($image, 180, 0);
-                    break;
-
-                case 6:
-                    $image = imagerotate($image, -90, 0);
-                    list($size[0],$size[1]) = array($size[1],$size[0]);
-                    break;
-
-                case 8:
-                    $image = imagerotate($image, 90, 0);
-                    list($size[0],$size[1]) = array($size[1],$size[0]);
-                    break;
-            }
+    protected function image_fix_orientation(&$image, &$size, $filename) {
+      $exif = exif_read_data($filename);
+      if (!empty($exif['Orientation'])) {
+        switch ($exif['Orientation']) {
+          case 3:
+            if ($image != null)
+                $image = imagerotate($image, 180, 0);
+            break;
+          case 6:
+            if ($image != null)
+              $image = imagerotate($image, -90, 0);
+            list($size[0],$size[1]) = array($size[1],$size[0]);
+            break;
+          case 8:
+            if ($image != null)
+              $image = imagerotate($image, 90, 0);
+            list($size[0],$size[1]) = array($size[1],$size[0]);
+            break;
         }
-    }
-
+      }
+    } 
 
     /**
      * RETRIEVE ONE IMAGE'S DISPLAY URL
@@ -370,7 +396,6 @@ class galleryJSON
      */
     protected function GetImageDisplayURL( $baseFolder, $filename )
     {
-    
       if( $this->config['images']['maxSize'] < 100 ) {
         return '';
       }
@@ -408,7 +433,7 @@ class galleryJSON
           return false;
           break;
       }
-
+    
       $this->image_fix_orientation($orgImage, $size, $baseFolder . $filename);
 
       $width  = $size[0];
@@ -514,7 +539,7 @@ class galleryJSON
       }
 
       $this->image_fix_orientation($orgImage, $size, $img);
-
+      
       $width  = $size[0];
       $height = $size[1];
       $thumb = imagecreate(3, 3);
@@ -553,7 +578,9 @@ class galleryJSON
           return '#000000';
           break;
       }
+      
       $this->image_fix_orientation($orgImage, $size, $img);
+      
       $width  = $size[0];
       $height = $size[1];
       
@@ -619,8 +646,9 @@ class galleryJSON
             break;
         }
       }
-      $this->image_fix_orientation($orgImage, $size, $baseFolder . $imagefilename);
         
+      $this->image_fix_orientation($orgImage, $size, $baseFolder . $imagefilename);
+      
       $width  = $size[0];
       $height = $size[1];
 
