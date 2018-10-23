@@ -133,7 +133,10 @@ class galleryJSON
                     strpos($filename, $this->config['ignoreDetector']) == false && 
                     true ) //!empty($files) )
             {
-              $lstAlbums[] = $this->PrepareData($filename, 'ALBUM');
+              $album = $this->PrepareData($filename, 'ALBUM');
+              if ($album != null && !empty($album)) {
+                $lstAlbums[] = $album;
+              }
             }
           }
         }
