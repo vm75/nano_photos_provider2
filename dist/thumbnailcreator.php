@@ -4,6 +4,11 @@
 require dirname(__FILE__) . '/nano_photos_provider2.encoding.php';
 
 function image_fix_orientation(&$image, &$size, $filename) {
+  if (!preg_match('\.(jpg|JPG|jpeg|JPEG)$', $filename)) {
+    // It's not a JPEG
+    return;
+  }
+    
   $exif = exif_read_data($filename);
   if (!empty($exif['Orientation'])) {
     switch ($exif['Orientation']) {
