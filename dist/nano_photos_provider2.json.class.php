@@ -44,6 +44,7 @@ class item
     public $dc          = '#888';         // image dominant color
     public $mtime       = '';             // ctime of image or album
     public $ctime       = '';             // mtime of image or album
+    public $sort        = '';             // a sort string not displayed
     // public $dcGIF       = '#000';   // image dominant color
 
 
@@ -238,6 +239,7 @@ class galleryJSON
         $this->config['sortOrderAlbum']         = strtoupper($config['config']['sortOrder']);
       }
       $this->config['titleDescSeparator']     = $config['config']['titleDescSeparator'];
+      $this->config['sortPrefixSeparator']     = $config['config']['sortPrefixSeparator'];
       $this->config['albumCoverDetector']     = $config['config']['albumCoverDetector'];
       $this->config['ignoreDetector']         = strtoupper($config['config']['ignoreDetector']);
 
@@ -359,6 +361,10 @@ class galleryJSON
       $order_array = explode("_", $this->config['sortOrder']);
       if (count($order_array) > 1) {
         switch ($order_array[1]){
+          case 'PREFIX':
+            $al = strtolower($a->sort);
+            $bl = strtolower($b->sort);
+            break;
           case 'CTIME':
             $al = strtolower($a->ctime);
             $bl = strtolower($b->ctime);
@@ -405,6 +411,10 @@ class galleryJSON
       $order_array = explode("_", $this->config['sortOrderAlbum']);
       if (count($order_array) > 1) {
         switch ($order_array[1]){
+          case 'PREFIX':
+            $al = strtolower($a->sort);
+            $bl = strtolower($b->sort);
+            break;
           case 'CTIME':
             $al = strtolower($a->ctime);
             $bl = strtolower($b->ctime);
@@ -912,6 +922,18 @@ class galleryJSON
         $oneItem->description = '';
       }
 
+      # Sort Using a Prefix from sortPrefixSeparator if present
+      if (strpos($oneItem->title, $this->config['sortPrefixSeparator']) > 0) {
+        // split sort from title
+        $s              = explode($this->config['sortPrefixSeparator'], $oneItem->title);
+        $oneItem->sort  = $this->CustomEncode($s[0]);
+        $oneItem->title = $this->CustomEncode($s[1]);
+      }
+      else{
+        # Set sort to title otherwise to allow blended sort prefix and not
+        $oneItem->sort  = $oneItem->title;
+      }
+
       $oneItem->title = str_replace($this->config['albumCoverDetector'], '', $oneItem->title);   // filter cover detector string
         
       // the title (=filename) is the ID
@@ -1050,6 +1072,7 @@ class galleryJSON
         $e = $this->GetMetaData($filename, true);
         $this->currentItem->title           = $e->title;
         $this->currentItem->description     = $e->description;
+        $this->currentItem->sort            = $e->sort;
         // $this->currentItem->src             = rawurlencode($this->CustomEncode($this->config['contentFolder'] . $this->album . '/' . $filename));
         $this->currentItem->originalURL     = rawurlencode($this->CustomEncode($this->config['contentFolder'] . $this->album . '/' . $filename));
         $this->currentItem->src             = $this->GetImageDisplayURL($this->data->fullDir, $filename);
@@ -1079,6 +1102,7 @@ class galleryJSON
         $e = $this->GetMetaData($filename, false);
         $this->currentItem->title           = $e->title;
         $this->currentItem->description     = $e->description;
+        $this->currentItem->sort            = $e->sort;
         $this->currentItem->ctime           = filectime($this->data->fullDir . $filename);
         $this->currentItem->mtime           = filemtime($this->data->fullDir . $filename);
 
