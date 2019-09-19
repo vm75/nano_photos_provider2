@@ -375,24 +375,28 @@ class galleryJSON
         return;
       }
 
-      $exif = exif_read_data($filename);
-      if (!empty($exif['Orientation'])) {
-        switch ($exif['Orientation']) {
-          case 3:
-            if ($image != null)
-                $image = imagerotate($image, 180, 0);
-            break;
-          case 6:
-            if ($image != null)
-              $image = imagerotate($image, -90, 0);
-            list($size[0],$size[1]) = array($size[1],$size[0]);
-            break;
-          case 8:
-            if ($image != null)
-              $image = imagerotate($image, 90, 0);
-            list($size[0],$size[1]) = array($size[1],$size[0]);
-            break;
-        }
+      try {
+          $exif = exif_read_data($filename);
+          if (!empty($exif['Orientation'])) {
+              switch ($exif['Orientation']) {
+                  case 3:
+                      if ($image != null)
+                          $image = imagerotate($image, 180, 0);
+                      break;
+                  case 6:
+                      if ($image != null)
+                          $image = imagerotate($image, -90, 0);
+                      list($size[0], $size[1]) = array($size[1], $size[0]);
+                      break;
+                  case 8:
+                      if ($image != null)
+                          $image = imagerotate($image, 90, 0);
+                      list($size[0], $size[1]) = array($size[1], $size[0]);
+                      break;
+              }
+          }
+      } catch (Exception $e) {
+          return;
       }
     } 
 
@@ -661,9 +665,9 @@ class galleryJSON
       $height = $size[1];
 
       $originalAspect = $width / $height;
-      $thumbAspect    = $thumbWidth / $thumbHeight;
 
       if ( $thumbWidth != 'auto' && $thumbHeight != 'auto' ) {
+        $thumbAspect    = $thumbWidth / $thumbHeight;
         // IMAGE CROP
         // some inspiration found in donkeyGallery (from Gix075) https://github.com/Gix075/donkeyGallery 
         if ($originalAspect >= $thumbAspect) {
