@@ -69,7 +69,7 @@ class galleryJSON
     protected $ctn_w    = array();
     protected $ctn_h    = array();
     protected $currentItem;
-            
+
     const CONFIG_FILE    = './nano_photos_provider2.cfg';
     const APP_VERSION    = '1.2';                                 
 
@@ -215,12 +215,25 @@ class galleryJSON
           rewinddir( $dh );          
         }
       }                                           
+
+      $min_count = 0;
+      // This logic is not yet correct, but will make sure all images are loaded when the parameter is not set
+      if (!isset($_GET['perPage'])) {
+          $max_count = INF;
+      } else {
+          $max_count = $_GET['perPage'];
+      }
+
+      $img_count = 0;
+
       // loop the folder to retrieve images and albums
       if ($dh != false) {
-        while (false !== ($filename = readdir($dh))) {
+          while (false !== ($filename = readdir($dh))) {
           if (is_file($this->data->fullDir . $filename) ) {
             // it's a file
-            if ($filename != '.' &&
+            // $img_count++;
+            if ($img_count >= $min_count && $img_count < $max_count && 
+                    $filename != '.' &&
                     $filename != '..' &&
                     $filename != '_thumbnails' &&
                     preg_match("/\.(" . $this->config['fileExtensions'] . ")*$/i", $filename) &&
@@ -237,9 +250,12 @@ class galleryJSON
                     $filename != '..' &&
                     $filename != '_thumbnails' &&
                     strpos($filename, $this->config['ignoreDetector']) == false && 
-                    !empty($files) )
+                    true ) //!empty($files) )
             {
-              $lstAlbums[] = $this->PrepareData($filename, 'ALBUM');
+              $album = $this->PrepareData($filename, 'ALBUM');
+              if ($album != null && !empty($album)) {
+                $lstAlbums[] = $album;
+              }
             }
           }
         }
@@ -468,6 +484,21 @@ class galleryJSON
       }
       closedir($dh);
 
+      if ($image == '') {
+        $dh       = opendir($folder );
+        while (false !== ($filename = readdir($dh))) {
+          if ($filename != '.' && $filename != '..' && !is_file($folder . '/' . $filename)) {
+            $image = $this->GetFirstImageFolder($folder . '/' . $filename);
+            if ($image != '') {
+              $image = $filename . '/' . $image;  
+              break;
+            }
+          }
+        }
+        closedir($dh);
+      }
+
+
       return $image;
     }
 
@@ -595,6 +626,36 @@ class galleryJSON
       }
     }
 
+    protected function image_fix_orientation(&$image, &$size, $filename) {
+      if (!preg_match('~\.(jpg|JPG|jpeg|JPEG)$~', $filename)) {
+        // It's not a JPEG
+        return;
+      }
+
+      try {
+          $exif = exif_read_data($filename);
+          if (!empty($exif['Orientation'])) {
+              switch ($exif['Orientation']) {
+                  case 3:
+                      if ($image != null)
+                          $image = imagerotate($image, 180, 0);
+                      break;
+                  case 6:
+                      if ($image != null)
+                          $image = imagerotate($image, -90, 0);
+                      list($size[0], $size[1]) = array($size[1], $size[0]);
+                      break;
+                  case 8:
+                      if ($image != null)
+                          $image = imagerotate($image, 90, 0);
+                      list($size[0], $size[1]) = array($size[1], $size[0]);
+                      break;
+              }
+          }
+      } catch (Exception $e) {
+          return;
+      }
+    } 
 
     /**
      * RETRIEVE ONE IMAGE'S DISPLAY URL
@@ -604,7 +665,6 @@ class galleryJSON
      */
     protected function GetImageDisplayURL( $baseFolder, $filename )
     {
-    
       if( $this->config['images']['maxSize'] < 100 ) {
         return '';
       }
@@ -642,7 +702,7 @@ class galleryJSON
           return false;
           break;
       }
-
+    
       $this->image_fix_orientation($orgImage, $size, $baseFolder . $filename);
 
       $width  = $size[0];
@@ -787,7 +847,9 @@ class galleryJSON
           return '#000000';
           break;
       }
+      
       $this->image_fix_orientation($orgImage, $size, $img);
+      
       $width  = $size[0];
       $height = $size[1];
       
@@ -863,6 +925,7 @@ class galleryJSON
       // $thumbAspect    = $thumbWidth / $thumbHeight;
 
       if ( $thumbWidth != 'auto' && $thumbHeight != 'auto' ) {
+        $thumbAspect    = $thumbWidth / $thumbHeight;
         // IMAGE CROP
         // some inspiration found in donkeyGallery (from Gix075) https://github.com/Gix075/donkeyGallery 
         $thumbAspect    = $thumbWidth / $thumbHeight;
