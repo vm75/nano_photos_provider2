@@ -7,8 +7,8 @@
  * The content is provided on demand, one album at one time.
  * Thumbnails and blurred preview images are generated automatically.
  * Dominant colors are extracted as a base64 GIF.
- * 
- * License: nanoPhotosProvider2 is open source and licensed under GPLv3 license. 
+ *
+ * License: nanoPhotosProvider2 is open source and licensed under GPLv3 license.
  *
  * PHP 5.3+
  * @version       1.2.1
@@ -28,7 +28,7 @@
  * - bhartvigsen - https://github.com/bhartvigsen
  */
 
- require './nano_photos_provider2.json.class.php';
+ require __DIR__ . '/nano_photos_provider2.json.class.php';
 
 // Available values development, production
 // Codeigniter env switch https://github.com/bcit-ci/CodeIgniter/
@@ -45,10 +45,10 @@ switch (ENVIRONMENT) {
         $t = new galleryJSON();
         break;
 
-        
+
     case 'production':
         ini_set('display_errors', 0);
-        
+
         if (version_compare(PHP_VERSION, '5.3', '>=')) {
             error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT & ~E_USER_NOTICE & ~E_USER_DEPRECATED);
         } else {
@@ -64,7 +64,7 @@ switch (ENVIRONMENT) {
           echo $output;
           exit;
         }
-        
+
         // called at the end of the script (including abnormal end)
         register_shutdown_function( function(){
             $last_error = error_get_last();
