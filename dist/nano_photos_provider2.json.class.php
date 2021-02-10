@@ -7,8 +7,8 @@
  * The content is provided on demand, one album at one time.
  * Thumbnails and blurred preview images are generated automatically.
  * Dominant colors are extracted as a base64 GIF.
- * 
- * License: nanoPhotosProvider2 is open source and licensed under GPLv3 license. 
+ *
+ * License: nanoPhotosProvider2 is open source and licensed under GPLv3 license.
  *
  * PHP 5.3+
  * @version       1.2.1
@@ -28,7 +28,7 @@
  * - bhartvigsen - https://github.com/bhartvigsen
  */
 
-require './nano_photos_provider2.encoding.php';
+require __DIR__ . '/nano_photos_provider2.encoding.php';
 
 class galleryData
 {
@@ -69,11 +69,11 @@ class galleryJSON
     protected $ctn_w    = array();
     protected $ctn_h    = array();
     protected $currentItem;
-            
-    const CONFIG_FILE    = './nano_photos_provider2.cfg';
-    const APP_VERSION    = '1.2';                                 
 
-    public function __construct()
+    const CONFIG_FILE    = './nano_photos_provider2.cfg';
+    const APP_VERSION    = '1.2';
+
+    public function __construct($configFile = self::CONFIG_FILE)
     {
       // retrieve the album ID in the URL
       $this->album   = '/';
@@ -88,8 +88,7 @@ class galleryJSON
         $this->albumID = '0';
       }
 
-      $this->setConfig(self::CONFIG_FILE);
-      
+      $this->setConfig($configFile);
 
       // thumbnail responsive sizes
 
@@ -113,7 +112,7 @@ class galleryJSON
         if (array_key_exists('hxs', $_GET)) {
           $this->tn_size['hxs']   = strtolower($this->CheckThumbnailSize( $_GET['hxs'] ));
         }
-        
+
         if (array_key_exists('wsm', $_GET)) {
           $this->tn_size['wsm']   = strtolower($this->CheckThumbnailSize( $_GET['wsm'] ));
         }
@@ -141,29 +140,24 @@ class galleryJSON
         if (array_key_exists('hxl', $_GET)) {
           $this->tn_size['hxl']   = strtolower($this->CheckThumbnailSize( $_GET['hxl'] ));
         }
-      // }        
-      
-      
-      
+      // }
 
-
-      
       $this->data           = new galleryData();
       $this->data->fullDir  = ($this->config['contentFolder']) . ($this->album);
 
-      $lstImages = array();
+    $this->config['contentFolder'] = array();
       $lstAlbums = array();
-      
+
       $dh = opendir($this->data->fullDir);
 
       // check if cached JSON is up to date
       $JSON_file = $this->data->fullDir . '_thumbnails/cache.json';
       if (file_exists( $JSON_file )) {
         $JSON_time = filemtime($JSON_file);
-        
+
         // loop to compare files/directories creation time
         if ($dh != false) {
-        
+
           $uptodate = true;
           while (false !== ($filename = readdir($dh))) {
             if (is_file($this->data->fullDir . $filename) ) {
@@ -171,7 +165,7 @@ class galleryJSON
               if ($filename != '.' &&
                       $filename != '..' &&
                       $filename != '_thumbnails' &&
-                      // preg_match - If the i modifier is set, letters in the pattern match both upper and lower case letters 
+                      // preg_match - If the i modifier is set, letters in the pattern match both upper and lower case letters
                       preg_match("/\.(" . $this->config['fileExtensions'] . ")*$/i", $filename) &&
                       strpos($filename, $this->config['ignoreDetector']) == false )
               {
@@ -188,7 +182,7 @@ class galleryJSON
               if ($filename != '.' &&
                       $filename != '..' &&
                       $filename != '_thumbnails' &&
-                      strpos($filename, $this->config['ignoreDetector']) == false && 
+                      strpos($filename, $this->config['ignoreDetector']) == false &&
                       !empty($files) )
               {
                 // check creation and modification time
@@ -200,11 +194,11 @@ class galleryJSON
               }
             }
           }
-          
+
           if( $uptodate == true ) {
             // JSON cached file is uptodate -> use it
             $objData = file_get_contents($JSON_file);
-            $response = unserialize($objData);           
+            $response = unserialize($objData);
             if( !empty($response) ){
               closedir($dh);
               $this->SendData($response);
@@ -212,9 +206,9 @@ class galleryJSON
             }
           }
 
-          rewinddir( $dh );          
+          rewinddir( $dh );
         }
-      }                                           
+      }
       // loop the folder to retrieve images and albums
       if ($dh != false) {
         while (false !== ($filename = readdir($dh))) {
@@ -236,7 +230,7 @@ class galleryJSON
             if ($filename != '.' &&
                     $filename != '..' &&
                     $filename != '_thumbnails' &&
-                    strpos($filename, $this->config['ignoreDetector']) == false && 
+                    strpos($filename, $this->config['ignoreDetector']) == false &&
                     !empty($files) )
             {
               $lstAlbums[] = $this->PrepareData($filename, 'ALBUM');
@@ -245,12 +239,10 @@ class galleryJSON
         }
         closedir($dh);
       }
-			else {
-				// album not found
-				$response = array( 'nano_status' => 'error', 'nano_message' => 'album not found: ' . rawurlencode($this->data->fullDir) );
-				$this->SendData($response);
-				exit;
-			}
+      else {
+        // album not found
+        $this->reportError('album not found: ' . rawurlencode($this->data->fullDir));
+      }
 
       // sort data
       // usort($lstAlbums, array('galleryJSON', 'Compare'));
@@ -268,12 +260,12 @@ class galleryJSON
       $fp = fopen($JSON_file, "w");
       fwrite($fp, serialize( $response ));
       fclose($fp);
-                         
+
     }
-    
+
     /**
      * CHECK IF THUMBNAIL SIZE IS ALLOWED (if not allowed: send error message and exit)
-     * 
+     *
      * @param string $size
      * @return boolean
      */
@@ -283,7 +275,7 @@ class galleryJSON
         // no size restriction
         return $size;
       }
-      
+
       $s=explode('|', $this->config['thumbnails']['allowedSizeValues']);
       if( is_array($s) ) {
         foreach($s as $one) {
@@ -293,18 +285,16 @@ class galleryJSON
           }
         }
       }
-      
+
       $response = array( 'nano_status' => 'error', 'nano_message' => 'requested thumbnail size not allowed: '. $size );
       $this->SendData($response);
       exit;
-      
-    }
-    
 
-    
+    }
+
     /**
      * SEND THE RESPONSE BACK
-     * 
+     *
      * @param string $response
      */
     protected function SendData( $response )
@@ -323,10 +313,10 @@ class galleryJSON
           $cnt++;
         }
       }
-      
+
       // set the content-type header
       header('Content-Type: application/json; charset=utf-8');
-    
+
       // add app version
       $response['nanophotosprovider'] = self::APP_VERSION;
       // return the data
@@ -338,13 +328,13 @@ class galleryJSON
         // return in JSON
         echo $output;
       }
-    
+
     }
-    
+
     protected function setConfig($filePath)
     {
       $config = parse_ini_file($filePath, true);
-      
+
       // general settings
       $this->config['contentFolder']          = $config['config']['contentFolder'];
       $this->config['fileExtensions']         = $config['config']['fileExtensions'];
@@ -365,7 +355,7 @@ class galleryJSON
       if( $config['memory']['unlimited'] == true ) {
         ini_set('memory_limit', '-1');
       }
-      
+
       // images
       $this->config['images']['maxSize'] = 0;
       $ms = $config['images']['maxSize'];
@@ -377,7 +367,7 @@ class galleryJSON
       if( ctype_digit(strval($iq)) ){
         $this->config['images']['jpegQuality'] = $iq;
       }
-      
+
       // thumbnails
       $tq = $config['thumbnails']['jpegQuality'];
       $this->config['thumbnails']['jpegQuality'] = 85; // default jpeg quality
@@ -401,8 +391,8 @@ class galleryJSON
       // $this->config['thumbnails']['height_la'] = $config['thumbnails']['height_la'];
       // $this->config['thumbnails']['width_xl'] = $config['thumbnails']['width_xl'];
       // $this->config['thumbnails']['height_xl'] = $config['thumbnails']['height_xl'];
-      
-      
+
+
       $tbq = $config['thumbnails']['blurredImageQuality'];
       $this->config['thumbnails']['blurredImageQuality'] = 3; // default blurred image quality
       if( ctype_digit(strval($tbq)) ){
@@ -413,16 +403,14 @@ class galleryJSON
       if( $asv != '' ) {
          $this->config['thumbnails']['allowedSizeValues']=$asv;
       }
-      
 
-      
       // security
       $this->config['security']['allowOrigins'] = $config['security']['allowOrigins'];
     }
 
     /**
      * RETRIEVE THE COVER IMAGE (THUMBNAIL) OF ONE ALBUM (FOLDER)
-     * 
+     *
      * @param string $baseFolder
      * @return string
      */
@@ -451,7 +439,7 @@ class galleryJSON
 
     /**
      * Retrieve the first image of one folder --> ALBUM THUMBNAIL
-     * 
+     *
      * @param string $folder
      * @return string
      */
@@ -471,14 +459,12 @@ class galleryJSON
       return $image;
     }
 
-
-
      /**
      * FOR FILES
      * @param object $a
      * @param object $b
      * @return int
-     */      
+     */
     protected function CompareFile($a, $b)
     {
       $order_array = explode("_", $this->config['sortOrder']);
@@ -522,7 +508,7 @@ class galleryJSON
       }
       return ($b) ? +1 : -1;
     }
-    
+
     /**
      * FOR ALBUMS
      * @param object $a
@@ -595,16 +581,15 @@ class galleryJSON
       }
     }
 
-
     /**
      * RETRIEVE ONE IMAGE'S DISPLAY URL
-     * 
+     *
      * @param type $baseFolder
      * @param type $filename
      */
     protected function GetImageDisplayURL( $baseFolder, $filename )
     {
-    
+
       if( $this->config['images']['maxSize'] < 100 ) {
         return '';
       }
@@ -613,9 +598,9 @@ class galleryJSON
         mkdir( $baseFolder . '_thumbnails', 0755, true );
       }
 
-      
+
       $lowresFilename = $baseFolder . '_thumbnails/' . $filename;
-      
+
       if (file_exists($lowresFilename)) {
         if( filemtime($lowresFilename) > filemtime($baseFolder . $filename) ) {
           // original image file is older as the image use for display
@@ -654,7 +639,7 @@ class galleryJSON
         $this->currentItem->imgHeight = $height;
         return rawurlencode($this->CustomEncode($baseFolder . $filename));
       }
-      
+
       $newWidth = $width;
       $newHeight = $height;
       if( $width > $height ) {
@@ -669,7 +654,7 @@ class galleryJSON
           $newWidth = $this->config['images']['maxSize'] / $height * $width;
         }
       }
-      
+
       $display_image = imagecreatetruecolor($newWidth, $newHeight);
 
       // Resize
@@ -694,10 +679,9 @@ class galleryJSON
 
     }
 
-    
     /**
      * RETRIEVE ONE IMAGE'S THUMBNAILS
-     * 
+     *
      * @param type $baseFolder
      * @param type $filename
      * @return type
@@ -721,10 +705,10 @@ class galleryJSON
         }
       }
     }
-    
+
     /**
      * GENERATE A SMALL BASE64 GIF WITH ONE IMAGE'S DOMINANT COLORS
-     * 
+     *
      * @param type $baseFolder
      * @param type $filename
      * @return gif
@@ -746,26 +730,26 @@ class galleryJSON
           return '';
           break;
       }
-      
+
       $this->image_fix_orientation($orgImage, $size, $img);
-      
+
       $width  = $size[0];
       $height = $size[1];
       $thumb = imagecreate(3, 3);
 
       imagecopyresampled($thumb, $orgImage, 0, 0, 0, 0, 3, 3, $width, $height);
 
-      ob_start(); 
+      ob_start();
       imagegif( $thumb );
-      $image_data = ob_get_contents(); 
-      ob_end_clean();         
-     
+      $image_data = ob_get_contents();
+      ob_end_clean();
+
       return base64_encode( $image_data );
     }
 
     /**
      * RETRIVE ONE IMAGE'S DOMINANT COLOR
-     * 
+     *
      * @param type $baseFolder
      * @param type $filename
      * @return gif
@@ -790,7 +774,7 @@ class galleryJSON
       $this->image_fix_orientation($orgImage, $size, $img);
       $width  = $size[0];
       $height = $size[1];
-      
+
       $pixel = imagecreatetruecolor(1, 1);
 
       imagecopyresampled($pixel, $orgImage, 0, 0, 0, 0, 1, 1, $width, $height);
@@ -798,13 +782,13 @@ class galleryJSON
       $rgb = imagecolorat($pixel, 0, 0);
       $color = imagecolorsforindex($pixel, $rgb);
       $hex=sprintf('#%02x%02x%02x', $color[red], $color[green], $color[blue]);
-      
+
       return $hex;
     }
 
     /**
      * GENERATE ONE THUMBNAIL
-     * 
+     *
      * @param type $baseFolder
      * @param type $imagefilename
      * @param type $thumbnailFilename
@@ -818,7 +802,7 @@ class galleryJSON
       if (!file_exists( $baseFolder . '_thumbnails' )) {
         mkdir( $baseFolder . '_thumbnails', 0755, true );
       }
-        
+
       $generateThumbnail = true;
       if (file_exists($baseFolder . '_thumbnails/' . $thumbnailFilename)) {
         if( filemtime($baseFolder . '_thumbnails/' . $thumbnailFilename) > filemtime($baseFolder.$imagefilename) ) {
@@ -826,7 +810,7 @@ class galleryJSON
           $generateThumbnail=false;
         }
       }
-      
+
       $generateDominantColors = true;
       if( $s != 0 ) {
         $generateDominantColors=false;
@@ -834,9 +818,9 @@ class galleryJSON
       else {
         $generateDominantColors= ! $this->GetDominantColors($baseFolder . $imagefilename, $baseFolder . '_thumbnails/' . $thumbnailFilename . '.data');
       }
-     
+
       $size = getimagesize($baseFolder . $imagefilename);
-      
+
       if( $generateThumbnail == true || $generateDominantColors == true ) {
         switch ($size['mime']) {
           case 'image/jpeg':
@@ -853,9 +837,9 @@ class galleryJSON
             break;
         }
       }
-      
+
       $this->image_fix_orientation($orgImage, $size, $baseFolder . $imagefilename);
-      
+
       $width  = $size[0];
       $height = $size[1];
 
@@ -864,7 +848,7 @@ class galleryJSON
 
       if ( $thumbWidth != 'auto' && $thumbHeight != 'auto' ) {
         // IMAGE CROP
-        // some inspiration found in donkeyGallery (from Gix075) https://github.com/Gix075/donkeyGallery 
+        // some inspiration found in donkeyGallery (from Gix075) https://github.com/Gix075/donkeyGallery
         $thumbAspect    = $thumbWidth / $thumbHeight;
         if ($originalAspect >= $thumbAspect) {
           // If image is wider than thumbnail (in aspect ratio sense)
@@ -891,7 +875,7 @@ class galleryJSON
                 0, 0, // src_x, src_y
                 $newWidth, $newHeight, $width, $height);
         }
-          
+
       } else {
         // NO IMAGE CROP
         if( $thumbWidth == 'auto' ) {
@@ -902,11 +886,11 @@ class galleryJSON
           $newHeight = $height / $width * $thumbWidth;
           $newWidth  = $thumbWidth;
         }
-        
+
         // thumbnail image size
         $this->currentItem->t_width[$s]=$newWidth;
         $this->currentItem->t_height[$s]=$newHeight;
-        
+
         if( $generateThumbnail == true ) {
           $thumb = imagecreatetruecolor($newWidth, $newHeight);
 
@@ -928,17 +912,17 @@ class galleryJSON
             break;
         }
       }
-      
+
       if( $generateDominantColors == true ) {
         // Dominant colorS -> GIF
         $dc3 = imagecreate($this->config['thumbnails']['blurredImageQuality'], $this->config['thumbnails']['blurredImageQuality']);
         imagecopyresampled($dc3, $orgImage, 0, 0, 0, 0, 3, 3, $width, $height);
-        ob_start(); 
+        ob_start();
         imagegif( $dc3 );
-        $image_data = ob_get_contents(); 
-        ob_end_clean();         
+        $image_data = ob_get_contents();
+        ob_end_clean();
         $this->currentItem->dcGIF= base64_encode( $image_data );
-        
+
         // Dominant color -> HEX RGB
         $pixel = imagecreatetruecolor(1, 1);
         imagecopyresampled($pixel, $orgImage, 0, 0, 0, 0, 1, 1, $width, $height);
@@ -949,7 +933,7 @@ class galleryJSON
 
         // save to cache
         $fdc = fopen($baseFolder . '_thumbnails/' . $thumbnailFilename . '.data', 'w');
-        if( $fdc ) { 
+        if( $fdc ) {
           fwrite($fdc, 'dc=' . $hex . "\n");
           fwrite($fdc, 'dcGIF=' . base64_encode( $image_data ));
           fclose($fdc);
@@ -963,10 +947,10 @@ class galleryJSON
       return true;
     }
 
-    
+
     protected function GetDominantColors($fileImage, $fileDominantColors)
     {
-    
+
       if (file_exists($fileDominantColors)) {
         if( filemtime($fileDominantColors) < filemtime($fileImage) ) {
           // image file is older as the dominant colors file
@@ -976,7 +960,7 @@ class galleryJSON
         // read cached data
         $cnt=0;
         $myfile = fopen($fileDominantColors, "r");
-        if( $myfile ) { 
+        if( $myfile ) {
           while(!feof($myfile)) {
             $l=fgets($myfile);
             $s=explode('=', $l);
@@ -991,20 +975,20 @@ class galleryJSON
           }
           fclose($myfile);
         }
-        
+
         if( $cnt == 2 ) {
           // ok, 2 values found
           return true;
         }
       }
-      
+
       return false;
-      
+
     }
 
     /**
      * Extract title and description from filename
-     * 
+     *
      * @param string $filename
      * @param boolean $isImage
      * @return \item
@@ -1012,7 +996,7 @@ class galleryJSON
     protected function GetMetaData($filename, $isImage)
     {
       $f=$filename;
-  
+
       if ($isImage) {
         $filename = $this->file_ext_strip($filename);
       }
@@ -1049,10 +1033,10 @@ class galleryJSON
       }
 
       $oneItem->title = str_replace($this->config['albumCoverDetector'], '', $oneItem->title);   // filter cover detector string
-        
+
       // the title (=filename) is the ID
       $oneItem->ID= $oneItem->title;
-        
+
       // read meta data from external file (images and albums)
       // if ($isImage) {
         if( file_exists( $this->data->fullDir . '/' . $filename . '.txt' ) ) {
@@ -1070,14 +1054,14 @@ class galleryJSON
           }
           fclose($myfile);
         }
-        
+
       //}
       return $oneItem;
     }
 
     /**
      * Returns only the file extension (without the period).
-     * 
+     *
      * @param string $filename
      * @return string
      */
@@ -1091,7 +1075,7 @@ class galleryJSON
 
     /**
      * Returns the file name, less the extension.
-     * 
+     *
      * @param string $filename
      * @return string
      */
@@ -1100,10 +1084,10 @@ class galleryJSON
       return preg_replace('/.[^.]*$/', '', $filename);
     }
 
-    
-    
+
+
     /**
-     * 
+     *
      * @param string $s
      * @return string
      */
@@ -1114,7 +1098,7 @@ class galleryJSON
     }
 
     /**
-     * 
+     *
      * @param type $s
      * @return type
      */
@@ -1127,7 +1111,7 @@ class galleryJSON
 
     /**
      * Returns the number of items in one disk folder.
-     * 
+     *
      * @param type $d
      * @return integer
      */
@@ -1135,11 +1119,11 @@ class galleryJSON
     {
       $cnt = 0;
       $dh = opendir($d);
-      
+
       // loop the folder to retrieve images and albums
       if ($dh != false) {
         while (false !== ($filename = readdir($dh))) {
-          
+
           if (is_file($this->data->fullDir . $filename) ) {
             // it's a file
             if ($filename != '.' &&
@@ -1158,7 +1142,7 @@ class galleryJSON
                     $filename != '..' &&
                     $filename != '_thumbnails' &&
                     preg_match("/\.(" . $this->config['fileExtensions'] . ")*$/i", $filename) &&
-                    strpos($filename, $this->config['ignoreDetector']) == false && 
+                    strpos($filename, $this->config['ignoreDetector']) == false &&
                     !empty($filename) )
             {
               $cnt++;
@@ -1169,13 +1153,11 @@ class galleryJSON
       else {
         closedir($dh);
       }
-      
+
       return $cnt;
 
    }
 
-    
-    
     protected function PrepareData($filename, $kind)
     {
       // $oneItem = new item();
@@ -1242,5 +1224,10 @@ class galleryJSON
       }
     }
 
+    protected function reportError($message) {
+      $response = array( 'nano_status' => 'error', 'nano_message' => $message );
+      $this->SendData($response);
+      exit;
+    }
 }
 ?>
